@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: haruum-order-config
+data:
+  order_url: haruum-order-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haruum-order-deployment
+  labels:
+    app: haruum-order
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: haruum-order
+  template:
+    metadata:
+      labels:
+        app: haruum-order
+    spec:
+      containers:
+        - name: haruum-order
+          image: johaneschristiancc/cc_haruum_order:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - protocol: TCP
+              containerPort: 80
+          env:
+            - name: MONGO_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: mongodb-config-map
+                  key: db_url
+            - name: MONGO_PORT
+              value: "27017"
+            - name: MONGO_DBNAME
+              value: "haruum_nosql"
+            - name: MONGO_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: username
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: password
+            - name: OUTLET_APPLICATION_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: haruum-outlet-config
+                  key: "outlet_url"
+            - name: CUSTOMER_APPLICATION_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: haruum-customer-config
+                  key: customer_url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: haruum-order-service
+spec:
+  selector:
+    app: haruum-order
+  type: LoadBalancer
+  ports:  
+    - protocol: TCP
+      port: 80
+      targetPort: 80

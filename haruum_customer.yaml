@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: haruum-customer-config
+data:
+  customer_url: haruum-customer-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haruum-customer-deployment
+  labels:
+    app: haruum-customer
+spec:
+  replicas: 1
+  selector: 
+    matchLabels:
+      app: haruum-customer
+  template:
+    metadata:
+      labels:
+        app: haruum-customer
+    spec:
+      containers:
+        - name: haruum-customer
+          image: johaneschristiancc/cc_haruum_customer:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - protocol: TCP
+              containerPort: 80
+          env:
+            - name: MONGO_HOST
+              valueFrom:
+                configMapKeyRef:  
+                  name: mongodb-config-map
+                  key: db_url
+            - name: MONGO_PORT
+              value: "27017"
+            - name: MONGO_DBNAME
+              value: "haruum_nosql"
+            - name: MONGO_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: username
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: haruum-customer-service
+spec:
+  selector:
+    app: haruum-customer
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
